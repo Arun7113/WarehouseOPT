@@ -1,73 +1,58 @@
+# Warehouse Picklist Optimization Engine
 
-```markdown
-# 📦 Warehouse Picklist Optimization Engine
+**Team:** Bit Musketeers
 
-**Team:** Bit Musketeers  
-**Domain:** Supply Chain Logistics / Operations Research
+## 1. Project Overview
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue) ![Algorithm](https://img.shields.io/badge/Algorithm-Greedy%20Heuristic-green) ![Status](https://img.shields.io/badge/Status-Hackathon%20Submission-orange)
+This project addresses a complex, large-scale constrained scheduling problem for warehouse operations. The goal is to maximize **Effective Fulfillment** (SKUs picked before their cutoff times) while strictly adhering to operational constraints such as picker availability, shift timings, weight limits, and zone restrictions.
 
-## 📖 Overview
+Our solution implements a high-performance **Simulation-Based Heuristic Engine** capable of processing millions of rows to generate optimized picklists in  time.
 
-This project implements a high-performance **Simulation-Based Heuristic Engine** designed to maximize warehouse fulfillment throughput. The system processes large-scale order data to generate optimized picklists while strictly adhering to complex operational constraints (picker availability, weight limits, shift timings, and zone restrictions).
+## 2. Key Features
 
-Our solution prioritizes **Effective Fulfillment**—ensuring SKUs are picked before their critical cutoff times—achieving an **O(N log N)** time complexity suitable for millions of records.
+* **Dynamic Resource Management:** Utilizes a Min-Heap (Priority Queue) to manage a pool of 150 pickers across overlapping shifts (Night, Morning, General).
+* **Time-Synchronized Operations:** Global operational start time is synchronized to **21:00 (9 PM)**. Morning shifts ending before this time are automatically scheduled for the subsequent calendar day to ensure full workforce utilization.
+* **Multi-Constraint Batching:** Strictly enforces four concurrent constraints per picklist:
+* **Zone Integrity:** One zone per picklist.
+* **Capacity Limits:** Max 2000 units.
+* **Weight Protocol:** 200kg (Standard) vs. 50kg (Fragile).
+* **Store Diversity:** Limited by `pods_per_picklist` parameter.
 
----
 
-## 🚀 Key Features
+* **Wasted Effort Mitigation:** Predictive logic calculates "Finish Time" before assignment. If a task cannot be completed before the SKU cutoff or shift end, it is skipped to preserve efficiency.
 
-- **Time-Synchronized Operations:** - Aligns all operations to a global **21:00 (9 PM)** start time.
-  - Automatically schedules shifts ending before the start time (e.g., Morning Shift) to the subsequent calendar day to ensure 100% workforce utilization.
-  
-- **Dynamic Resource Management:** - Uses a **Min-Heap (Priority Queue)** to manage a pool of **150 pickers** across overlapping shifts.
-  - Assigns tasks dynamically to the picker who becomes available earliest.
+## 3. Algorithmic Approach
 
-- **Multi-Constraint Batching:**
-  - **Zone Integrity:** Strict one-zone-per-picklist rule.
-  - **Capacity Limits:** Max 2,000 units per picklist.
-  - **Weight Protocol:** 200kg (Standard) vs. 50kg (Fragile).
-  - **Store Diversity:** Controlled by `pods_per_picklist` limits.
+We employ a **Priority-Queue Simulation** rather than a standard optimization solver to handle the scale of data.
 
-- **Wasted Effort Mitigation:** - Predictive logic calculates the "Finish Time" *before* assignment.
-  - If a task cannot be completed before the SKU cutoff or picker's shift end, it is dropped to preserve efficiency for viable orders.
+1. **Heuristic Sorting:** The global order book is sorted by `Cutoff_Time`  `Zone`  `Bin_Rank`. This prioritizes urgent deadlines while maximizing picking density to reduce travel time.
+2. **Picker Assignment:** A Min-Heap tracks the `available_time` of every picker. The engine greedily assigns the highest-priority batch to the picker who becomes free earliest.
+3. **Travel Modeling:** Time cost is calculated dynamically:
 
----
 
-## 🧠 Algorithmic Approach
 
-### Why We Chose a Heuristic over Reinforcement Learning
-During our R&D phase, we explored **Reinforcement Learning (RL)** and **Google OR-Tools**. However, we pivoted to a custom Simulation Heuristic for the following reasons:
+## 4. Design Decisions: Why Not Reinforcement Learning?
 
-1.  **State Space Explosion:** With thousands of SKUs and 150 concurrent agents (pickers), the branching factor for an RL agent was too massive to converge within the hackathon timeframe.
-2.  **Feasibility & Scale:** Constraint Programming solvers (like OR-Tools) struggled to optimize efficiently across millions of rows with non-linear travel time calculations.
-3.  **Deterministic Stability:** Our simulation approach provides a robust, explainable, and highly scalable solution that guarantees hard constraint adherence.
+During the initial R&D phase, we attempted to solve this problem using **Reinforcement Learning (RL)** and **Google OR-Tools**. However, we pivoted to the current Heuristic approach for the following reasons:
 
-### The Solution: Priority-Queue Simulation
-1.  **Heuristic Sorting:** The global order book is prioritized by:
-    `Cutoff_Time` (Earliest Deadline) → `Zone` (Clustering) → `Bin_Rank` (Travel Minimization).
-2.  **Greedy Assignment:** The engine pulls the most urgent valid batch and assigns it to the first available picker from the Heap.
-3.  **Travel Modeling:**
-    $$T_{total} = T_{setup} + (N_{bins} \times 0.5) + (N_{units} \times T_{pick}) + (N_{orders} \times 0.5) + T_{staging}$$
+* **State Space Explosion:** With thousands of SKUs, 150 distinct agents (pickers), and continuous time variables, the branching factor for an RL agent was too massive to converge within a reasonable timeframe.
+* **Scalability:** Constraint Programming solvers (like OR-Tools) struggled to handle the sheer volume of data (millions of rows) alongside the complex, non-linear constraints of travel time calculations.
+* **Feasibility:** The Simulation-Based Heuristic provides a robust, deterministic, and highly scalable solution that guarantees adherence to hard constraints while achieving near-optimal throughput.
 
----
+## 5. Performance & Results
 
-## 📊 Performance Metrics
+Our engine achieved the following metrics on the test dataset:
 
-On the provided test dataset, our engine achieved:
+| Metric | Result |
+| --- | --- |
+| **Total SKU Units Picked** | **48,906.0** |
+| Total Picklists Generated | 4,693 |
+| Picker Utilization | 100% (150 Pickers) |
 
-| Metric | Value |
-| :--- | :--- |
-| **Total SKU Units Picked** | **48,906** |
-| **Total Picklists Generated** | **4,693** |
-| **Picker Utilization** | **100%** (150 Pickers) |
-| **Algorithm Speed** | High (Vectorized Processing) |
-
----
-
-## 🛠️ Installation & Usage
+## 6. Setup & Usage
 
 ### Prerequisites
+
 * Python 3.8+
 * Pandas, NumPy
 
@@ -78,51 +63,31 @@ pip install pandas numpy
 
 ### Configuration
 
-1. Place your dataset in the project folder.
-2. Update the `INPUT_FILE` path in `main.py`:
+Update the `INPUT_FILE` path in the script to point to your dataset:
+
 ```python
-INPUT_FILE = '/content/picklist_data.csv'
+INPUT_FILE = 'path/to/your_data.csv'
 
 ```
 
+### Operational Constants
 
-3. (Optional) Adjust warehouse physics constants in `config`:
-* `CUTOFF_MAP`: Priority-to-time mapping.
-* `TIME_PARAMS`: Operational costs (walking speed, picking time).
+You can adjust the warehouse physics in the configuration section of the script:
 
+* `CUTOFF_MAP`: Priority-based cutoff times.
+* `TIME_PARAMS`: Costs for setup, travel, and picking.
+* `SHIFTS`: Definitions for shift start/end times and headcount.
 
-
-### Running the Engine
+### Running the Optimizer
 
 ```bash
-python main.py
+python optimize_warehouse.py
 
 ```
 
-### Output
+## 7. Output
 
 The script generates:
 
-1. `picklists/`: A folder containing individual CSVs for every generated picklist.
-2. `Summary.csv`: A master log of all created picklists and their metadata.
-
----
-
-## 📂 Project Structure
-
-```
-├── main.py                 # Core optimization logic
-├── picklist_data.csv       # Input dataset (Ignored in git)
-├── picklists/              # Output directory for generated lists
-├── Summary.csv             # Final performance report
-└── README.md               # Project documentation
-
-```
-
----
-
-**Built by Team Bit Musketeers**
-
-```
-
-```
+1. **`Summary.csv`**: A high-level log of all generated picklists.
+2. **`picklists/`**: A directory containing individual CSV files for every generated picklist, ready for the warehouse management system (WMS).
