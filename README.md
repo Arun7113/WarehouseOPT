@@ -61,14 +61,6 @@ pip install pandas numpy
 
 ```
 
-### Configuration
-
-Update the `INPUT_FILE` path in the script to point to your dataset:
-
-```python
-INPUT_FILE = 'path/to/your_data.csv'
-
-```
 
 ### Operational Constants
 
